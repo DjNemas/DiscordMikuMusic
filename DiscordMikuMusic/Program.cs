@@ -12,40 +12,18 @@ namespace DiscordMikuMusic
     internal class Program
     {
         private static DependencyInjectionService _diService = new DependencyInjectionService();
-        
-        private static IConfiguration _configuration = null!;
-        private static IServiceProvider _serviceProvider = null!;
-
-        private static DiscordService _client = null!;
-        private static InteractionHandler _interactionService = null!;
 
         static async Task Main(string[] args)
         {
-            Init();
+            var scope = _diService.BuildAndCreateScope();
+            
+            scope.GetRequiredService<InteractionHandler>();
 
-            var provider = _diService.BuildProvider();
-            provider.CreateScope();
-
-            _configuration = provider.GetRequiredService<IConfiguration>();
-
-            _client = provider.GetRequiredService<DiscordService>();            
-            _interactionService = provider.GetRequiredService<InteractionHandler>();
-
-            await _client.Run();
+            var client = scope.GetRequiredService<DiscordService>();
+            await client.Run();
 
             await Task.Delay(-1);
         }
-
-        private static void Init()
-        {
-            var optionsIS = new InteractionServiceConfig();
-            optionsIS.LogLevel = LogSeverity.Debug;
-
-            _diService.AddConfigurationServices();
-            _diService.AddDiscordSocketClient();
-            _diService.AddInteractionHandler();
-        }
-
         
     }
 }

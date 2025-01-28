@@ -16,34 +16,28 @@ namespace DiscordMikuMusic.Services
             _collection = new ServiceCollection();
         }
 
-        public ServiceProvider BuildProvider()
+        public IServiceProvider BuildAndCreateScope()
         {
-            return _collection.BuildServiceProvider();
-        }
-
-        public void AddDiscordSocketClient()
-        {
+            // Singletons
             _collection.AddSingleton<DiscordService>();
             _collection.AddSingleton<DiscordSocketClient>();
+
+            // Scoped
+            AddConfigurationServices();
+            _collection.AddScoped<InteractionHandler>();
+            _collection.AddScoped<YoutubeService>();
+            _collection.AddScoped<MikuAudioService>();
+
+            return _collection.BuildServiceProvider().CreateScope().ServiceProvider;
         }
 
-        public void AddConfigurationServices()
+        private void AddConfigurationServices()
         {
             Console.WriteLine(AppContext.BaseDirectory);
             var builder = new ConfigurationBuilder()
                 .SetBasePath(AppContext.BaseDirectory)
                 .AddJsonFile("settings.json");
             _collection.AddScoped<IConfiguration>(x => builder.Build());
-        }
-
-        public void AddInteractionHandler()
-        {
-            _collection.AddScoped<InteractionHandler>();
-        }
-
-        public void AddYoutubeService()
-        {
-            _collection.AddScoped<YoutubeService>();
         }
     }
 }

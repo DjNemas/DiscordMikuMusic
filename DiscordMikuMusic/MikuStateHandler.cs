@@ -11,20 +11,22 @@ namespace DiscordMikuMusic
         private IGuild _guildID;
         private bool _joinedVoice;
         private MikuAudioService? _audioService;
+        private QueueService? _queueService;
 
         internal MikuStateHandler(IGuild guildID)
         {
             _guildID = guildID;
             _joinedVoice = false;
+            _queueService = new QueueService();
         }
         
         public void SetJoinedVoice(bool joined) => _joinedVoice = joined;
         public bool GetJoinedVoice() => _joinedVoice;
 
-        public void CreateAudioService(IAudioClient audioClient)
+        public void CreateServices(IAudioClient audioClient)
         {
             if(_audioService is null)
-                _audioService = new MikuAudioService(audioClient);
+                _audioService = new MikuAudioService(audioClient);                
             else
                 throw new InvalidOperationException("Audio Service already exists");
         }
@@ -36,10 +38,16 @@ namespace DiscordMikuMusic
             return _audioService;
         }
 
-        public void RemoveAudioService()
+        public QueueService GetQueueService() => _queueService!;
+
+        public void RemoveServices()
         {
+            // Not sure about this, check later
             if (_audioService is null)
                 throw new InvalidOperationException("Audio Service does not exist");
+            if(_queueService is null)
+                throw new InvalidOperationException("Queue Service does not exist");
+
             _audioService.Dispose();
             _audioService = null;
         }

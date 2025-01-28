@@ -20,7 +20,7 @@ namespace DiscordMikuMusic.Services
 
             _discordSocketClient = discordSocketClient;
             _discordSocketClient.InteractionCreated += InteractionCreated;
-            _discordSocketClient.GuildAvailable += RegisterCommandsToGuildAsync;
+            _discordSocketClient.GuildAvailable += RegisterModulsToGuildAsync;
 
             var options = new InteractionServiceConfig()
             {
@@ -30,8 +30,18 @@ namespace DiscordMikuMusic.Services
             RegisterModulsAsync();
         }
 
-        public async Task RegisterCommandsToGuildAsync(IGuild guild)
+        public async Task RegisterModulsToGuildAsync(IGuild guild)
         {
+            var guildCommands = await guild.GetApplicationCommandsAsync();
+            var existingModules = _interactionService.Modules;
+
+            var commandsToRemove = guildCommands.Where(cmd => !existingModules.Any(mod => mod.SlashCommands.Any(sc => sc.Name == cmd.Name))).ToList();
+
+            foreach (var command in commandsToRemove)
+            {
+                await command.DeleteAsync();
+            }
+
             await _interactionService.AddModulesToGuildAsync(guild, modules: _moduls.ToArray());
         }
 

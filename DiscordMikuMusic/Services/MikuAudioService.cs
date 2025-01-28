@@ -1,10 +1,14 @@
 ﻿using Discord.Audio;
+using DiscordMikuMusic.Interfaces;
+using DiscordMikuMusic.Models;
 using NAudio.Wave;
 
 namespace DiscordMikuMusic.Services
 {
-    internal class MikuAudioService : IDisposable
+    internal class MikuAudioService : IDisposable, IMikuAudioService
     {
+        public Action? OnFinishedPlayingSong;
+
         private IAudioClient _audioClient;
         private AudioOutStream _audioOutStream;
         private CancellationTokenSource? _cancellationTokenSource;
@@ -17,12 +21,13 @@ namespace DiscordMikuMusic.Services
             _audioOutStream = audioClient.CreatePCMStream(AudioApplication.Music);
         }
 
-        public async Task PlayMp3(string filePath)
+        public async Task Play(Song song)
         {
             _isPlaying = true;
             _cancellationTokenSource = new CancellationTokenSource();
 
-            using (var mp3Reader = new Mp3FileReader(filePath))
+
+            using (var mp3Reader = new Mp3FileReader(song.FilePath.FullName))
             using (var pcmStream = WaveFormatConversionStream.CreatePcmStream(mp3Reader))
             {
                 byte[] buffer = new byte[4096];
@@ -42,6 +47,8 @@ namespace DiscordMikuMusic.Services
             }
 
             _isPlaying = false;
+            if(!_cancellationTokenSource.IsCancellationRequested)
+                OnFinishedPlayingSong?.Invoke();
         }
 
         public bool IsPlaying() => _isPlaying;
@@ -59,5 +66,6 @@ namespace DiscordMikuMusic.Services
                 Stop();
             _audioClient.Dispose();
         }
+
     }
 }
