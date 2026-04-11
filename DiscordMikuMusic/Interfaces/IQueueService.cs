@@ -18,6 +18,6 @@ namespace DiscordMikuMusic.Interfaces
         void ResetIndex();
         void SetLoop(bool loop);
         void SetMikuAudioService(MikuAudioService mikuAudioService);
-        int SongPosition(Song song);
+        int GetSongPosition(Song song);
     }
 }

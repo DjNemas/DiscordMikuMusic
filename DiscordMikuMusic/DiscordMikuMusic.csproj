@@ -28,14 +28,14 @@
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.5" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.5" />
-    <PackageReference Include="MikuLib.Logger" Version="10.2.39" />
-    <PackageReference Include="NAudio" Version="2.3.0" />
-    <PackageReference Include="YoutubeDLSharp" Version="1.2.0" />
-  </ItemGroup>
+  <PackageReference Include="MikuLib.Logger" Version="10.2.39" />
+  <PackageReference Include="NAudio" Version="2.3.0" />
+  <PackageReference Include="YoutubeDLSharp" Version="1.2.0" />
+</ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\DiscordMikuMusic.Interfaces\DiscordMikuMusic.Interfaces.csproj" />
-    <ProjectReference Include="..\DiscordMikuMusic.Services\DiscordMikuMusic.Services.csproj" />
+<ItemGroup>
+  <ProjectReference Include="..\DiscordMikuMusic.Interfaces\DiscordMikuMusic.Interfaces.csproj" />
+  <ProjectReference Include="..\DiscordMikuMusic.Services\DiscordMikuMusic.Services.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -26,7 +26,8 @@ namespace DiscordMikuMusic.Services
             _collection.AddSingleton<IYTDLPUpdaterService, YTDLPUpdaterService>();
             _collection.AddSingleton(factory => new DiscordSocketClient(GetDiscordCLientOptions()));
             _collection.AddSingleton<DiscordService>();
-            
+            _collection.AddSingleton<EmojiReactionService>();
+
             // Scoped
             AddConfigurationServices();
             _collection.AddScoped<InteractionHandler>();
@@ -77,7 +78,9 @@ namespace DiscordMikuMusic.Services
             return new DiscordSocketConfig()
             {
                 GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.GuildVoiceStates,
-                LogLevel = LogSeverity.Warning
+                LogLevel = LogSeverity.Warning,
+                AlwaysDownloadUsers = false,
+                MessageCacheSize = 1000
             };
         }
 
