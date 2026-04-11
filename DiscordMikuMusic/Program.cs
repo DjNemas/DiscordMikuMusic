@@ -1,10 +1,6 @@
-﻿using Discord.WebSocket;
-using Discord;
-using Microsoft.Extensions.Configuration;
+﻿using DiscordMikuMusic.Interfaces;
 using DiscordMikuMusic.Services;
 using Microsoft.Extensions.DependencyInjection;
-using Discord.Interactions;
-using System.Runtime.CompilerServices;
 
 namespace DiscordMikuMusic
 {
@@ -16,14 +12,18 @@ namespace DiscordMikuMusic
         static async Task Main(string[] args)
         {
             var scope = _diService.BuildAndCreateScope();
-            
-            scope.GetRequiredService<InteractionHandler>();
+
+            var updater = scope.GetRequiredService<IYTDLPUpdaterService>();
+            await updater.TryUpdate();
+
+            var interactionService = scope.GetRequiredService<InteractionHandler>();
+            await interactionService.RegisterAssemblyModulsAsync();
 
             var client = scope.GetRequiredService<DiscordService>();
             await client.Run();
 
             await Task.Delay(-1);
         }
-        
+
     }
 }

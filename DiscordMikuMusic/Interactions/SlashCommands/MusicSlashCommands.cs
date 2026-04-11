@@ -1,13 +1,21 @@
 ﻿using Discord;
+using Discord.Audio;
 using Discord.Interactions;
 using DiscordMikuMusic.Models;
 using DiscordMikuMusic.Services;
-using YoutubeDLSharp;
+using Microsoft.Extensions.Logging;
 
 namespace DiscordMikuMusic.Interactions.SlashCommands
 {
     public class MusicSlashCommands : InteractionModuleBase<SocketInteractionContext>
     {
+        private readonly ILogger<MusicSlashCommands> _logger;
+
+        public MusicSlashCommands(ILogger<MusicSlashCommands> logger)
+        {
+            _logger = logger;
+        }
+
         [SlashCommand("showcurrentqueue", "Displays the Current Queue")]
         public async Task ShowQueueAsync()
         {
@@ -41,16 +49,18 @@ namespace DiscordMikuMusic.Interactions.SlashCommands
         [SlashCommand("join", "Let Miku join your Voice Channel!")]
         public async Task JoinAsync()
         {
+            await DeferAsync();
+
             var mikuState = MikuStateHandler.GetState(Context.Guild);
             if (mikuState is null)
             {
-                await RespondAsync("Something went wrong");
+                await FollowupAsync("Something went wrong");
                 return;
             }
 
             if (mikuState.GetJoinedVoice())
             {
-                await RespondAsync("Already Joined a Voice Channel");
+                await FollowupAsync("Already Joined a Voice Channel");
                 return;
             }
 
@@ -58,16 +68,36 @@ namespace DiscordMikuMusic.Interactions.SlashCommands
             var channel = (Context.User as IGuildUser)?.VoiceChannel;
             if (channel == null)
             {
-                await RespondAsync("You have to be in a Voice Channel, otherwise Miku can't join you :c");
+                await FollowupAsync("You have to be in a Voice Channel, otherwise Miku can't join you :c");
                 return;
             }
 
-            var audioClient = await channel.ConnectAsync();
+            var botPermissions = Context.Guild.CurrentUser.GetPermissions(channel);
+            if (!botPermissions.Connect || !botPermissions.Speak)
+            {
+                await FollowupAsync("I don't have permission to connect or speak in that Voice Channel!");
+                return;
+            }
+
+            if (!botPermissions.SendMessages)
+                _logger.LogWarning("[{Guild}] Missing SendMessages permission in voice text channel '{Channel}' — RespondAsync may not be visible there.",
+                    Context.Guild.Name, channel.Name);
+
+            IAudioClient audioClient;
+            try
+            {
+                audioClient = await channel.ConnectAsync();
+            }
+            catch (TimeoutException)
+            {
+                await FollowupAsync("Could not connect to the Voice Channel. Please try again.");
+                return;
+            }
 
             mikuState.CreateServices(audioClient);
             mikuState.SetJoinedVoice(true);
 
-            await RespondAsync($"Joined Voice Channel {channel.Name}! 🎶");
+            await FollowupAsync($"Joined Voice Channel {channel.Name}! 🎶");
         }
 
         [SlashCommand("leave", "Miku says bye from Voice Channel :c")]
@@ -183,7 +213,7 @@ namespace DiscordMikuMusic.Interactions.SlashCommands
                 };
                 songs.Add(song);
                 count++;
-            }            
+            }
 
             mikuState.GetQueueService().AddToQueue(songs);
 

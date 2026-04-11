@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MikuLib.Logger" Version="10.2.39" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DiscordMikuMusic.Interfaces\DiscordMikuMusic.Interfaces.csproj" />
+    <ProjectReference Include="..\DiscordMikuMusic.Models\DiscordMikuMusic.Models.csproj" />
+  </ItemGroup>
+
+</Project>
