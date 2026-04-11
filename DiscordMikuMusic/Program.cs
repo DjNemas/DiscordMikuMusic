@@ -24,6 +24,5 @@ namespace DiscordMikuMusic
 
             await Task.Delay(-1);
         }
-        
     }
 }

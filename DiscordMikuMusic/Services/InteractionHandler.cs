@@ -1,9 +1,6 @@
 ﻿using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using DiscordMikuMusic.Interactions.SlashCommands;
-using Microsoft.VisualBasic;
-using System.Reactive.Threading.Tasks;
 
 namespace DiscordMikuMusic.Services
 {

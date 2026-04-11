@@ -1,9 +1,7 @@
-﻿using Discord.Interactions;
-using Discord.Rest;
+﻿using Discord;
 using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using System.Reflection.Emit;
 
 namespace DiscordMikuMusic.Services
 {
@@ -19,8 +17,10 @@ namespace DiscordMikuMusic.Services
         public IServiceProvider BuildAndCreateScope()
         {
             // Singletons
+            AddDiscorcServiceOption();
             _collection.AddSingleton<DiscordService>();
             _collection.AddSingleton<DiscordSocketClient>();
+            _collection.AddSingleton<EmojiReactionService>();
 
             // Scoped
             AddConfigurationServices();
@@ -38,6 +38,17 @@ namespace DiscordMikuMusic.Services
                 .SetBasePath(AppContext.BaseDirectory)
                 .AddJsonFile("settings.json");
             _collection.AddScoped<IConfiguration>(x => builder.Build());
+        }
+
+        private void AddDiscorcServiceOption()
+        {
+            _collection.AddSingleton(new DiscordSocketConfig
+            {
+                GatewayIntents = GatewayIntents.Guilds | GatewayIntents.GuildVoiceStates,
+                LogLevel = LogSeverity.Debug,
+                AlwaysDownloadUsers = false,
+                MessageCacheSize = 1000
+            });
         }
     }
 }

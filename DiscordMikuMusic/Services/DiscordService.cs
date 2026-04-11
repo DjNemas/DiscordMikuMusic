@@ -1,8 +1,6 @@
 ﻿using Discord;
 using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json.Linq;
-using System.Reflection.Metadata.Ecma335;
 
 namespace DiscordMikuMusic.Services
 {
@@ -29,7 +27,7 @@ namespace DiscordMikuMusic.Services
         private Task GuildUnavailable(SocketGuild guild)
         {
             var state = MikuStateHandler.GetState(guild);
-            if(state is not null)   
+            if (state is not null)
                 MikuStateHandler.RemoveState(state);
             return Task.CompletedTask;
         }

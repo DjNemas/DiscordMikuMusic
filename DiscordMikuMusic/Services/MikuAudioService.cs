@@ -1,13 +1,14 @@
 ﻿using Discord.Audio;
 using DiscordMikuMusic.Interfaces;
 using DiscordMikuMusic.Models;
+using NAudio.CoreAudioApi;
 using NAudio.Wave;
 
 namespace DiscordMikuMusic.Services
 {
     internal class MikuAudioService : IDisposable, IMikuAudioService
     {
-        public Action? OnFinishedPlayingSong;
+        public event Action? OnFinishedPlayingSong;
 
         private IAudioClient _audioClient;
         private AudioOutStream _audioOutStream;
@@ -18,7 +19,7 @@ namespace DiscordMikuMusic.Services
         public MikuAudioService(IAudioClient audioClient)
         {
             _audioClient = audioClient;
-            _audioOutStream = audioClient.CreatePCMStream(AudioApplication.Music);
+            _audioOutStream = _audioClient.CreatePCMStream(AudioApplication.Music);
         }
 
         public async Task Play(Song song)
@@ -26,38 +27,34 @@ namespace DiscordMikuMusic.Services
             _isPlaying = true;
             _cancellationTokenSource = new CancellationTokenSource();
 
-
-            using (var mp3Reader = new Mp3FileReader(song.FilePath.FullName))
-            using (var pcmStream = WaveFormatConversionStream.CreatePcmStream(mp3Reader))
+            using var mp3Reader = new Mp3FileReader(song.FilePath.FullName);
+            mp3Reader.Seek(0, SeekOrigin.Begin);
+            try
             {
-                byte[] buffer = new byte[4096];
-                int bytesRead;
-
-                try
-                {
-                    while ((bytesRead = await pcmStream.ReadAsync(buffer, 0, buffer.Length, _cancellationTokenSource.Token)) > 0)
-                    {
-                        await _audioOutStream.WriteAsync(buffer, 0, bytesRead, _cancellationTokenSource.Token);
-                    }
-                }
-                catch (OperationCanceledException)
-                {
-                    // Handle cancellation
-                }
+                await mp3Reader.CopyToAsync(_audioOutStream, _cancellationTokenSource.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Ignore
+            }
+            finally
+            {
+                _audioOutStream.Flush();
             }
 
             _isPlaying = false;
-            if(!_cancellationTokenSource.IsCancellationRequested)
-                OnFinishedPlayingSong?.Invoke();
+            OnFinishedPlayingSong?.Invoke();
         }
 
         public bool IsPlaying() => _isPlaying;
 
         public void Stop()
         {
-            _isPlaying = false;
-            _cancellationTokenSource?.Cancel();
-            _audioOutStream.Flush();
+            if(_isPlaying)
+            {
+                _cancellationTokenSource?.Cancel();
+            }
+                
         }
 
         public void Dispose()

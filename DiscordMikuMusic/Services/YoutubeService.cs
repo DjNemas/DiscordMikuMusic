@@ -13,18 +13,28 @@ namespace DiscordMikuMusic.Services
         private YoutubeDL _youtubeDL;
         public YoutubeService()
         {
-            _youtubeDL = new YoutubeDL();
-            _youtubeDL.YoutubeDLPath = _ytdlpPath;
-            _youtubeDL.FFmpegPath = _ffmpegPath;
-            _youtubeDL.OutputFolder = _outputPath;
+            _youtubeDL = new YoutubeDL
+            {
+                YoutubeDLPath = _ytdlpPath,
+                FFmpegPath = _ffmpegPath,
+                OutputFolder = _outputPath
+            };
 
             if (!Directory.Exists(_outputPath))
                 Directory.CreateDirectory(_outputPath);
         }
 
+        public string GetOutputPath() => _outputPath;
+
         public async Task<RunResult<VideoData>> GetMetadata(string url)
-        { 
+        {
             return await _youtubeDL.RunVideoDataFetch(url);
+        }
+
+        public bool MusicFileExist(VideoData videoData)
+        {
+            string filePath = Path.Combine(_outputPath, $"{videoData.Title}.{videoData.Extension}");
+            return File.Exists(filePath);
         }
 
         public async Task<RunResult<string>> DownloadAudio(string url)
