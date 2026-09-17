@@ -3,6 +3,8 @@ using Discord.Audio;
 using Discord.Interactions;
 using DiscordMikuMusic.Models;
 using DiscordMikuMusic.Services;
+using DiscordMikuMusic.Validators;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using YoutubeDLSharp.Metadata;
 
@@ -12,11 +14,13 @@ namespace DiscordMikuMusic.Interactions.SlashCommands
     {
         private readonly ILogger<MusicSlashCommands> _logger;
         private readonly EmojiReactionService _emojiReactionService;
+        private readonly IConfiguration _config;
 
-        public MusicSlashCommands(ILogger<MusicSlashCommands> logger, EmojiReactionService emojiReactionService)
+        public MusicSlashCommands(ILogger<MusicSlashCommands> logger, EmojiReactionService emojiReactionService, IConfiguration config)
         {
             _logger = logger;
             _emojiReactionService = emojiReactionService;
+            _config = config;
         }
 
         [SlashCommand("show_queue", "Displays the Current Queue")]
@@ -119,7 +123,7 @@ namespace DiscordMikuMusic.Interactions.SlashCommands
                 return;
             }
 
-            mikuState.CreateServices(audioClient);
+            mikuState.CreateServices(_logger, audioClient, _config);
             mikuState.SetJoinedVoice(true);
 
             await FollowupAsync($"Joined Voice Channel {channel.Name}! 🎶");
@@ -158,10 +162,16 @@ namespace DiscordMikuMusic.Interactions.SlashCommands
                 return;
             }
 
+            if(!YoutubeValidator.IsVideo(youtubeUrl, out var validYoutubeUrl))
+            {
+                await RespondAsync("Invalid Youtube Link");
+                return;
+            }
+
             await DeferAsync();
 
             var ytSerivce = new YoutubeService();
-            var metadata = await ytSerivce.GetMetadata(youtubeUrl);
+            var metadata = await ytSerivce.GetMetadata(validYoutubeUrl!.ToString());
             if (!metadata.Success)
             {
                 foreach (var error in metadata.ErrorOutput)
@@ -170,20 +180,10 @@ namespace DiscordMikuMusic.Interactions.SlashCommands
                 return;
             }
 
-            var result = await ytSerivce.DownloadAudio(youtubeUrl);
-            if (!result.Success)
-            {
-                foreach (var error in result.ErrorOutput)
-                    Console.WriteLine($"[YTDownloader] {error}");
-
-                await FollowupAsync("Something went wrong");
-                return;
-            }
-
             var song = new Song()
             {
                 Title = metadata.Data.Title,
-                FilePath = new FileInfo(result.Data)
+                Url = validYoutubeUrl!.ToString()
             };
 
             mikuState.GetQueueService().AddToQueue(song);
@@ -201,10 +201,16 @@ namespace DiscordMikuMusic.Interactions.SlashCommands
                 return;
             }
 
+            if(!YoutubeValidator.IsPlaylist(youtubeUrl, out var validYoutubeUrl))
+            {
+                await RespondAsync("Invalid Youtube Link");
+                return;
+            }
+
             await DeferAsync();
 
             var ytSerivce = new YoutubeService();
-            var metadata = await ytSerivce.GetMetadata(youtubeUrl);
+            var metadata = await ytSerivce.GetMetadata(validYoutubeUrl!.ToString());
             if (!metadata.Success)
             {
                 foreach (var error in metadata.ErrorOutput)
@@ -213,10 +219,10 @@ namespace DiscordMikuMusic.Interactions.SlashCommands
                 return;
             }
 
-            var tempArray = Array.Empty<VideoData>();
+            VideoData[] entries;
             try
             {
-                tempArray = metadata.Data.Entries.ToArray();
+                entries = metadata.Data.Entries.ToArray();
             }
             catch (Exception ex)
             {
@@ -225,78 +231,31 @@ namespace DiscordMikuMusic.Interactions.SlashCommands
                 return;
             }
 
-            var songs = new List<Song>();
-            var responseErrors = new List<string>();
-            var songArray = new Song[tempArray.Length];
-
-            // Parallel.ForEach für schnelleren Download
-            Parallel.For(0, tempArray.Length, i =>
+            var songs = entries.Select(e => new Song
             {
-                var entrie = tempArray[i];
-                try
-                {
-                    if (ytSerivce.MusicFileExist(entrie))
-                    {
-                        Console.WriteLine($"Song: {entrie.Title} already exists. Skipping download.");
-                        songArray[i] = new Song()
-                        {
-                            Title = entrie.Title,
-                            FilePath = new FileInfo(Path.Combine(ytSerivce.GetOutputPath(), $"{entrie.Title}.{entrie.Extension}"))
-                        };
-                        return;
-                    }
-
-
-                    var resultTask = ytSerivce.DownloadAudio(entrie.Url);
-                    resultTask.Wait();
-                    var result = resultTask.Result;
-                    if (!result.Success)
-                    {
-                        lock (responseErrors)
-                        {
-                            foreach (var error in result.ErrorOutput)
-                                Console.WriteLine($"[YTDownloader] {error}");
-                            responseErrors.Add($"Could not add Video: {entrie.Title}\n");
-                        }
-                        return;
-                    }
-                    Console.WriteLine($"Added Song: {entrie.Title} to Queue. [{i + 1}/{tempArray.Length}]");
-                    songArray[i] = new Song()
-                    {
-                        Title = entrie.Title,
-                        FilePath = new FileInfo(result.Data)
-                    };
-                }
-                catch (Exception ex)
-                {
-                    lock (responseErrors)
-                    {
-                        Console.WriteLine($"[YTDownloader] Exception: {ex.Message}");
-                        responseErrors.Add($"Could not add Video: {entrie.Title} (Exception)\n");
-                    }
-                }
-            });
-
-            songs.AddRange(songArray.Where(s => s != null));
+                Title = e.Title,
+                Url = e.Url
+            }).ToList();
 
             mikuState.GetQueueService().AddToQueue(songs);
 
-            await FollowupAsync($"Playlist {metadata.Data.Title} Added ♪♫{(responseErrors.Count() > 0 ? $"\n{string.Join("", responseErrors)}" : string.Empty)}");
+            await FollowupAsync($"Playlist {metadata.Data.Title} Added ♪♫ ({songs.Count} songs)");
         }
 
         [SlashCommand("play", "Play a Youtube Link")]
         public async Task PlayAsync(int? songNumber = null)
         {
+            await DeferAsync();
             var mikuState = MikuStateHandler.GetState(Context.Guild);
             if (mikuState is null)
             {
-                await RespondAsync("Something went wrong");
+                await FollowupAsync("Something went wrong");
                 return;
             }
 
             if (!mikuState.GetJoinedVoice())
             {
-                await RespondAsync("Miku is not in a Voice Channel");
+                await FollowupAsync("Miku is not in a Voice Channel");
                 return;
             }
 
@@ -304,13 +263,13 @@ namespace DiscordMikuMusic.Interactions.SlashCommands
 
             if (queueService.IsPlaying())
             {
-                await RespondAsync("Miku is alrady playing Music for you. ♪♫");
+                await FollowupAsync("Miku is alrady playing Music for you. ♪♫");
                 return;
             }
 
             if (queueService.IsEmpty())
             {
-                await RespondAsync("Queue is Empty");
+                await FollowupAsync("Queue is Empty");
                 return;
             }
 
@@ -318,7 +277,7 @@ namespace DiscordMikuMusic.Interactions.SlashCommands
             {
                 if (songNumber <= 0 || songNumber > queueService.GetQueue().Count())
                 {
-                    await RespondAsync("Invalid Number.");
+                    await FollowupAsync("Invalid Number.");
                     return;
                 }
                 else
@@ -328,7 +287,7 @@ namespace DiscordMikuMusic.Interactions.SlashCommands
             queueService.SetMikuAudioService(mikuState.GetAudioService());
             queueService.Play();
 
-            await RespondAsync($"♪♫");
+            await FollowupAsync($"♪♫");
         }
 
         [SlashCommand("stop", "Miku Miku Miiiii2")]

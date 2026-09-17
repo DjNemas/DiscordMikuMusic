@@ -13,7 +13,7 @@ namespace DiscordMikuMusic.Services
         private readonly ILogger<InteractionHandler> _logger;
         private IEnumerable<ModuleInfo> _moduls = null!;
 
-        public InteractionHandler(ILogger<InteractionHandler> logger, IServiceProvider serviceProvider, DiscordSocketClient discordSocketClient)
+        public InteractionHandler(ILogger<InteractionHandler> logger, IServiceProvider serviceProvider, DiscordSocketClient discordSocketClient, InteractionServiceConfig interactionServiceConfig)
         {
             _logger = logger;
             _serviceProvider = serviceProvider;
@@ -22,12 +22,7 @@ namespace DiscordMikuMusic.Services
             _discordSocketClient.InteractionCreated += InteractionCreated;
             _discordSocketClient.GuildAvailable += RegisterModulsToGuildAsync;
 
-            var options = new InteractionServiceConfig()
-            {
-                LogLevel = LogSeverity.Warning,
-                DefaultRunMode = RunMode.Async
-            };
-            _interactionService = new InteractionService(discordSocketClient, options);
+            _interactionService = new InteractionService(discordSocketClient, interactionServiceConfig);
             _interactionService.Log += Log;
         }
 

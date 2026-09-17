@@ -1,6 +1,5 @@
 ﻿using DiscordMikuMusic.Interfaces;
 using DiscordMikuMusic.Models;
-using NAudio.Wave;
 
 namespace DiscordMikuMusic.Services
 {

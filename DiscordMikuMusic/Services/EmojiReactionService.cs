@@ -9,12 +9,10 @@ namespace DiscordMikuMusic.Services
         private readonly DiscordSocketClient _client;
         // Stores: (GuildId, (MessageId, Page))
         private readonly ConcurrentDictionary<ulong, (ulong MessageId, int Page)> _queueMessages = new();
-        private readonly IServiceProvider _serviceProvider;
 
-        public EmojiReactionService(DiscordSocketClient client, IServiceProvider serviceProvider)
+        public EmojiReactionService(DiscordSocketClient client)
         {
             _client = client;
-            _serviceProvider = serviceProvider;
             _client.ReactionAdded += OnReactionAddedAsync;
         }
 

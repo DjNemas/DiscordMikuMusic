@@ -2,27 +2,28 @@ using DiscordMikuMusic.Interfaces;
 using DiscordMikuMusic.Models;
 using DiscordMikuMusic.Services.Helper;
 using Microsoft.Extensions.Logging;
+using System.IO.Compression;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace DiscordMikuMusic.Services
 {
-    public class YTDLPUpdaterService : IYTDLPUpdaterService
+    public class LibDaveUpdaterService : ILibDaveUpdaterService
     {
-        private const string _releaseInfoFile = "yt-dlp_release.json";
-        private readonly Uri _releaseUrl = new Uri("https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest");
+        private const string _releaseInfoFile = "libdave_release.json";
+        private readonly Uri _releaseUrl = new Uri("https://api.github.com/repos/discord/libdave/releases/latest");
         private readonly JsonSerializerOptions _jsonSerializerOptions = new() { WriteIndented = true };
 
         private readonly string _runningAssemblyFolder;
-        private readonly ILogger<YTDLPUpdaterService> _logger;
+        private readonly ILogger<LibDaveUpdaterService> _logger;
         private readonly AppInfo _appInfo;
         private GitHubReleaseResponseDTO? _localBinaryInfo;
 
-        public YTDLPUpdaterService(ILogger<YTDLPUpdaterService> logger, AppInfo appInfo)
+        public LibDaveUpdaterService(ILogger<LibDaveUpdaterService> logger, AppInfo appInfo)
             : this(logger, appInfo, Path.GetDirectoryName(AppContext.BaseDirectory)!) { }
 
-        public YTDLPUpdaterService(ILogger<YTDLPUpdaterService> logger, AppInfo appInfo, string downloadPath)
+        public LibDaveUpdaterService(ILogger<LibDaveUpdaterService> logger, AppInfo appInfo, string downloadPath)
         {
             _logger = logger;
             _appInfo = appInfo;
@@ -32,7 +33,7 @@ namespace DiscordMikuMusic.Services
 
         public async Task<GitHubReleaseResponseDTO?> TryUpdate()
         {
-            _logger.LogInformation("Starting yt-dlp update check...");
+            _logger.LogInformation("Starting libdave update check...");
 
             var assets = await FetchLatestReleaseAssets();
             if (assets is null) return null;
@@ -50,7 +51,7 @@ namespace DiscordMikuMusic.Services
             }
 
             await SaveReleaseInfoToFile(latestRelease);
-            _logger.LogInformation("yt-dlp successfully updated to release {CreatedAt}.", latestRelease.CreatedAt.ToString(Strings.GermanDateTimeFormat));
+            _logger.LogInformation("libdave successfully updated to release {CreatedAt}.", latestRelease.CreatedAt.ToString(Strings.GermanDateTimeFormat));
             return latestRelease;
         }
 
@@ -89,11 +90,11 @@ namespace DiscordMikuMusic.Services
 
         private GitHubReleaseResponseDTO? FindTargetAsset(GitHubReleaseResponseDTO[] assets)
         {
-            var asset = assets.FirstOrDefault(a => a.Name.EndsWith("yt-dlp.exe", StringComparison.OrdinalIgnoreCase));
+            var asset = assets.FirstOrDefault(a => a.Name.EndsWith("libdave-Windows-X64-boringssl.zip", StringComparison.OrdinalIgnoreCase));
 
             if (asset is null)
             {
-                _logger.LogError("No suitable yt-dlp.exe asset found in the latest release.");
+                _logger.LogError("No suitable libdave asset found in the latest release.");
                 return null;
             }
 
@@ -127,13 +128,13 @@ namespace DiscordMikuMusic.Services
                 return true;
             }
 
-            _logger.LogInformation("yt-dlp is already up to date (released: {CreatedAt}).", localInfo.CreatedAt.ToString(Strings.GermanDateTimeFormat));
+            _logger.LogInformation("libdave is already up to date (released: {CreatedAt}).", localInfo.CreatedAt.ToString(Strings.GermanDateTimeFormat));
             return false;
         }
 
         private async Task<bool> DownloadBinary(GitHubReleaseResponseDTO info)
         {
-            _logger.LogInformation("Downloading yt-dlp release {CreatedAt} from {Url}", info.CreatedAt.ToString(Strings.GermanDateTimeFormat), info.DownloadUrl);
+            _logger.LogInformation("Downloading libdave release {CreatedAt} from {Url}", info.CreatedAt.ToString(Strings.GermanDateTimeFormat), info.DownloadUrl);
 
             var message = new HttpRequestMessage(HttpMethod.Get, info.DownloadUrl);
             message.Headers.UserAgent.Add(new ProductInfoHeaderValue(_appInfo.Name, _appInfo.Version));
@@ -143,7 +144,7 @@ namespace DiscordMikuMusic.Services
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogError("Failed to download yt-dlp binary. Status code: {StatusCode}", response.StatusCode);
+                _logger.LogError("Failed to download libdave binary. Status code: {StatusCode}", response.StatusCode);
                 return false;
             }
 
@@ -157,18 +158,41 @@ namespace DiscordMikuMusic.Services
 
                 _logger.LogDebug("Downloaded {Bytes} bytes.", memoryStream.Length);
 
-                var filePath = Path.Combine(_runningAssemblyFolder, "yt-dlp.exe");
-                _logger.LogDebug("Writing binary to {FilePath}", filePath);
-
-                await File.WriteAllBytesAsync(filePath, memoryStream.ToArray());
-                _logger.LogInformation("yt-dlp binary written to {FilePath}", filePath);
-                return true;
+                memoryStream.Position = 0;
+                return await ExtractDllFromZip(memoryStream);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to write yt-dlp binary to disk");
+                _logger.LogError(ex, "Failed to download or extract libdave binary");
                 return false;
             }
+        }
+
+        private async Task<bool> ExtractDllFromZip(Stream zipStream)
+        {
+            using var archive = new ZipArchive(zipStream, ZipArchiveMode.Read);
+
+            // GitHub release zip structure: bin/libdave.dll
+            var dllEntry = archive.Entries.FirstOrDefault(e =>
+                e.FullName.Equals("bin/libdave.dll", StringComparison.OrdinalIgnoreCase));
+
+            if (dllEntry is null)
+            {
+                _logger.LogError("libdave.dll not found in bin/ of the release archive.");
+                return false;
+            }
+
+            _logger.LogDebug("Found {Entry} in release archive.", dllEntry.FullName);
+
+            var filePath = Path.Combine(_runningAssemblyFolder, "libdave.dll");
+            _logger.LogDebug("Writing binary to {FilePath}", filePath);
+
+            using var entryStream = dllEntry.Open();
+            using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write);
+            await entryStream.CopyToAsync(fileStream);
+
+            _logger.LogInformation("libdave.dll written to {FilePath}", filePath);
+            return true;
         }
 
         private async Task SaveReleaseInfoToFile(GitHubReleaseResponseDTO release)

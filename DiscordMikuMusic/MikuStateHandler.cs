@@ -1,6 +1,8 @@
 ﻿using Discord;
 using Discord.Audio;
 using DiscordMikuMusic.Services;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace DiscordMikuMusic
 {
@@ -23,10 +25,10 @@ namespace DiscordMikuMusic
         public void SetJoinedVoice(bool joined) => _joinedVoice = joined;
         public bool GetJoinedVoice() => _joinedVoice;
 
-        public void CreateServices(IAudioClient audioClient)
+        public void CreateServices(ILogger logger, IAudioClient audioClient, IConfiguration config)
         {
             if(_audioService is null)
-                _audioService = new MikuAudioService(audioClient);                
+                _audioService = new MikuAudioService(logger, audioClient, config);                
             else
                 throw new InvalidOperationException("Audio Service already exists");
         }

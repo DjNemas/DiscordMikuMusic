@@ -20,41 +20,39 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Discord.Net" Version="3.19.1" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.5" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.5">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.5" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.5" />
-  <PackageReference Include="MikuLib.Logger" Version="10.2.39" />
-  <PackageReference Include="NAudio" Version="2.3.0" />
-  <PackageReference Include="YoutubeDLSharp" Version="1.2.0" />
-</ItemGroup>
-
-<ItemGroup>
-  <ProjectReference Include="..\DiscordMikuMusic.Interfaces\DiscordMikuMusic.Interfaces.csproj" />
-  <ProjectReference Include="..\DiscordMikuMusic.Services\DiscordMikuMusic.Services.csproj" />
+    <!--
+      TODO: Sobald Discord.Net > 3.19.1 released wird (mit dem DAVE-Fix aus Issue #3251 / PR #3253),
+      diese zwei ProjectReferences durch die folgende PackageReference ersetzen und den _discord-net-dev Ordner löschen:
+        <PackageReference Include="Discord.Net" Version="NEUE_VERSION" />
+    -->
+    <ProjectReference Include="..\_discord-net-dev\src\Discord.Net.WebSocket\Discord.Net.WebSocket.csproj" />
+    <ProjectReference Include="..\_discord-net-dev\src\Discord.Net.Interactions\Discord.Net.Interactions.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="ffmpeg.exe">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.12">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
+    <PackageReference Include="MikuLib.Logger" Version="10.3.39" />
+    <PackageReference Include="NAudio" Version="3.1.0" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
+    <PackageReference Include="YoutubeDLSharp" Version="1.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DiscordMikuMusic.Interfaces\DiscordMikuMusic.Interfaces.csproj" />
+    <ProjectReference Include="..\DiscordMikuMusic.Services\DiscordMikuMusic.Services.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="libopus.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Update="libsodium.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="opus.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Update="settings.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="testsong.mp3">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
